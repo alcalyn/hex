@@ -140,6 +140,7 @@
     "pass": "Pass",
     "close": "Close",
     "ranked": "Ranked",
+    "friendly": "Friendly",
     "rating": "Rating: {{rating}}",
     "new_game": "New game",
     "players": "Players",

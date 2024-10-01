@@ -1,5 +1,6 @@
 <script setup lang="ts">
 /* eslint-env browser */
+import 'bootstrap/js/dist/modal';
 import useLobbyStore from '@client/stores/lobbyStore';
 import { ref, computed } from 'vue';
 import AppBoard from '@client/vue/components/AppBoard.vue';
@@ -12,18 +13,20 @@ import useAuthStore from '@client/stores/authStore';
 import Rooms from '@shared/app/Rooms';
 import { timeControlToCadencyName } from '../../../shared/app/timeControlUtils';
 import { useRoute, useRouter } from 'vue-router';
-import { BIconFlag, BIconXLg, BIconCheck, BIconChatRightText, BIconChatRight, BIconArrowBarLeft, BIconRepeat, BIconArrowCounterclockwise, BIconX, BIconRewind } from 'bootstrap-icons-vue';
+import { BIconFlag, BIconXLg, BIconCheck, BIconArrowBarLeft, BIconRepeat, BIconArrowCounterclockwise, BIconX, BIconRewind, BIconList, BIconArrowDownUp } from 'bootstrap-icons-vue';
 import usePlayerSettingsStore from '../../stores/playerSettingsStore';
 import usePlayerLocalSettingsStore from '../../stores/playerLocalSettingsStore';
 import { storeToRefs } from 'pinia';
 import i18next from 'i18next';
-import { PlayerIndex } from '@shared/game-engine';
+import { Move, PlayerIndex } from '@shared/game-engine';
 import { useSeoMeta } from '@unhead/vue';
 import AppGameSidebar from '../components/AppGameSidebar.vue';
 import AppConnectionAlert from '../components/AppConnectionAlert.vue';
 import { fromEngineMove } from '../../../shared/app/models/Move';
 import { pseudoString } from '../../../shared/app/pseudoUtils';
 import { CustomizedGameView } from '../../services/CustomizedGameView';
+import { isMyTurn } from '../../services/notifications/context-utils';
+import { canPassAgain } from '../../../shared/app/passUtils';
 
 useSeoMeta({
     robots: 'noindex',
@@ -146,7 +149,6 @@ watchEffect(() => {
 onUnmounted(() => socketStore.leaveRoom(Rooms.game(gameId)));
 
 const getLocalPlayerIndex = (): number => {
-
     if (null === loggedInPlayer.value || !hostedGameClient.value) {
         return -1;
     }
@@ -479,6 +481,47 @@ const unreadMessages = (): number => {
 const enableRewindMode = () => {
     gameView?.enableRewindMode();
 };
+
+/*
+ * Secondary actions
+ */
+const closeModal = ref<HTMLElement>();
+
+const closeSecondaryActionsModal = () => {
+    if (!closeModal.value) {
+        return;
+    }
+
+    closeModal.value.click();
+};
+
+/*
+ * Pass
+ */
+const pass = async () => {
+    if (null === hostedGameClient.value) {
+        return;
+    }
+
+    const passMove = Move.pass();
+    hostedGameClient.value.getGame().move(passMove, getLocalPlayerIndex() as PlayerIndex);
+    hostedGameClient.value.sendMove(fromEngineMove(passMove));
+};
+
+const shouldShowPass = (): boolean => {
+    return -1 !== getLocalPlayerIndex();
+};
+
+const shouldEnablePass = (): boolean => {
+    if (null === hostedGameClient.value) {
+        return false;
+    }
+
+    return 'playing' === hostedGameClient.value.getState()
+        && isMyTurn(hostedGameClient.value.getHostedGame())
+        && canPassAgain(hostedGameClient.value.getGame())
+    ;
+};
 </script>
 
 <template>
@@ -564,19 +607,45 @@ const enableRewindMode = () => {
                         </router-link>
                     </template>
 
-                    <!-- Chat -->
-                    <button type="button" class="btn btn-outline-primary position-relative" @click="showSidebar()">
-                        <BIconChatRightText v-if="hostedGameClient.getChatMessages().length > 0" />
-                        <BIconChatRight v-else />
-                        <span class="d-none d-lg-inline">{{ ' ' + $t('chat') }}</span>
-                        <span v-if="unreadMessages() > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    <!-- Right button, open sidebar -->
+                    <button type="button" class="btn btn-outline-primary open-sidebar-btn" @click="showSidebar()" aria-label="Open game sidebar and chat">
+                        <BIconArrowBarLeft />
+                        <span v-if="unreadMessages() > 0" class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger">
                             {{ unreadMessages() }}
                             <span class="d-none">{{ ' ' + $t('unread_messages') }}</span>
                         </span>
                     </button>
 
-                    <!-- Right button, open sidebar -->
-                    <button type="button" class="btn btn-outline-primary open-sidebar-btn" @click="showSidebar()" aria-label="Open game sidebar and chat"><BIconArrowBarLeft /></button>
+                    <!-- Open secondary actions modal -->
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                        <BIconList />
+                    </button>
+
+                    <!-- Secondary actions modal -->
+                    <div class="modal fade-bottom" id="exampleModal" ref="secondaryActionsModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-body text-center">
+                                    <div class="d-grid gap-2">
+
+                                        <!-- Pass -->
+                                        <button
+                                            v-if="shouldShowPass()"
+                                            type="button"
+                                            class="btn"
+                                            :class="shouldEnablePass() ? 'text-warning' : 'text-secondary disabled'"
+                                            :disabled="!shouldEnablePass()"
+                                            @click.prevent="pass(); closeSecondaryActionsModal()"
+                                        ><BIconArrowDownUp /> {{ $t('pass') }}</button>
+
+                                        <!-- Close modal -->
+                                        <button type="button" class="btn text-secondary" ref="closeModal" data-bs-dismiss="modal">{{ $t('close') }}</button>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
             </nav>
@@ -602,6 +671,13 @@ const enableRewindMode = () => {
 </template>
 
 <style scoped lang="stylus">
+.modal.fade-bottom .modal-dialog
+    transform translate(0, 50px)
+    transition: transform 0.3s ease-out
+
+.modal.show .modal-dialog
+    transform none
+
 .join-button-container
     top 0
     position absolute

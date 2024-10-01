@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /* eslint-env browser */
 import { PropType, nextTick, onMounted, ref, toRefs, watch, watchEffect } from 'vue';
-import { BIconAlphabet, BIconSendFill, BIconArrowBarRight, BIconShareFill, BIconCheck, BIconDownload, BIconTrophy, BIconCaretUpFill, BIconCaretDownFill, BIconInfoCircle, BIconGear } from 'bootstrap-icons-vue';
+import { BIconAlphabet, BIconSendFill, BIconArrowBarRight, BIconShareFill, BIconCheck, BIconDownload, BIconCaretUpFill, BIconCaretDownFill, BIconInfoCircle, BIconGear, BIconTrophyFill, BIconPeopleFill } from 'bootstrap-icons-vue';
 import { storeToRefs } from 'pinia';
 import copy from 'copy-to-clipboard';
 import useAuthStore from '../../stores/authStore';
@@ -16,7 +16,6 @@ import Move from '@shared/game-engine/Move';
 import { canPlayerChatInGame } from '../../../shared/app/chatUtils';
 import { format, formatDistanceToNow, formatRelative, intlFormat, isSameDay } from 'date-fns';
 import { gameToHexworldLink } from '../../../shared/app/hexworld';
-import { canPassAgain } from '../../../shared/app/passUtils';
 import { timeControlToCadencyName } from '../../../shared/app/timeControlUtils';
 import useAnalyzeStore from '../../stores/analyzeStore';
 import useServerDateStore from '../../stores/serverDateStore';
@@ -24,9 +23,6 @@ import { downloadString } from '../../services/fileDownload';
 import { pseudoString } from '../../../shared/app/pseudoUtils';
 import { hostedGameToSGF } from '../../../shared/app/hostedGameToSGF';
 import GameView from '../../../shared/pixi-board/GameView';
-import { isMyTurn } from '../../services/notifications/context-utils';
-import { PlayerIndex } from '@shared/game-engine';
-import { fromEngineMove } from '@shared/app/models/Move';
 import { autoLocale } from '../../../shared/app/i18n';
 
 const props = defineProps({
@@ -299,54 +295,53 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
     hostedGameClient.value.getPlayerIndex(a.player) -
     hostedGameClient.value.getPlayerIndex(b.player)
 ;
-
-/*
- * Pass
- */
-const getLocalPlayerIndex = (): number => {
-    if (null === loggedInPlayer || !hostedGameClient.value) {
-        return -1;
-    }
-
-    return hostedGameClient.value.getPlayerIndex(loggedInPlayer);
-};
-
-const pass = async () => {
-    const passMove = Move.pass();
-    hostedGameClient.value.getGame().move(passMove, getLocalPlayerIndex() as PlayerIndex);
-    hostedGameClient.value.sendMove(fromEngineMove(passMove));
-};
-
-const shouldShowPass = (): boolean => {
-    return -1 !== getLocalPlayerIndex();
-};
-
-const shouldEnablePass = (): boolean => {
-    return 'playing' === hostedGameClient.value.getState()
-        && isMyTurn(hostedGameClient.value.getHostedGame())
-        && canPassAgain(hostedGameClient.value.getGame())
-    ;
-};
 </script>
 
 <template>
     <div class="sidebar-blocks">
 
         <!--
+            Game title
+        -->
+        <div class="sidebar-block block-game-title">
+            <div class="container-fluid">
+                <h3 v-if="'created' === hostedGameClient.getState()">{{ $t('waiting_for_an_opponent') }}</h3>
+                <h3 v-if="'canceled' === hostedGameClient.getState()">{{ $t('game_has_been_canceled') }}</h3>
+                <h3 v-if="'playing' === hostedGameClient.getState()">{{ $t('game.playing') }}</h3>
+                <h3 v-if="'ended' === hostedGameClient.getState()">
+                    <i18next :translation="$t('player_wins_by.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
+                        <template #player>
+                            <AppPseudo :player="hostedGameClient.getStrictWinnerPlayer()" :classes="playerColor(hostedGameClient.getStrictWinnerPlayer())" />
+                        </template>
+                    </i18next>
+                </h3>
+            </div>
+        </div>
+
+        <!--
+            Game ranked/friendly, and custom options
+        -->
+        <div class="sidebar-block block-game-options">
+            <div class="container-fluid">
+                <p v-if="hostedGameClient.isRanked()" class="text-warning">
+                    <BIconTrophyFill /> {{ $t('ranked') }}
+                </p>
+                <p v-else>
+                    <span class="text-success"><BIconPeopleFill /> {{ $t('friendly') }}</span>
+                    <small class="ms-2"><AppGameRulesSummary :gameOptions="hostedGameClient.getGameOptions()" /></small>
+                </p>
+            </div>
+        </div>
+
+        <!--
             Game info
         -->
-        <div class="block-game-info">
+        <div class="sidebar-block block-game-info">
             <div class="container-fluid">
 
                 <!-- created -->
                 <template v-if="'created' === hostedGameClient.getState()">
-                    <h3>{{ $t('waiting_for_an_opponent') }}</h3>
-                    <p v-if="hostedGameClient.isRanked()" class="text-warning">
-                        <BIconTrophy /> {{ $t('ranked') }}
-                    </p>
                     <p>
-                        <small>{{ $t('2dots', { s: $t('game.rules') }) }} <AppGameRulesSummary :gameOptions="hostedGameClient.getGameOptions()" /></small>
-                        <br>
                         <small>{{ $t('2dots', { s: $t('game.time_control') }) }} <AppTimeControlLabel :gameOptions="hostedGameClient.getGameOptions()" /></small>
                     </p>
                     <p>
@@ -363,13 +358,7 @@ const shouldEnablePass = (): boolean => {
 
                 <!-- canceled -->
                 <template v-if="'canceled' === hostedGameClient.getState()">
-                    <h3>{{ $t('game_has_been_canceled') }}</h3>
-                    <p v-if="hostedGameClient.isRanked()" class="text-warning">
-                        <BIconTrophy /> {{ $t('ranked') }}
-                    </p>
                     <p>
-                        <small>{{ $t('2dots', { s: $t('game.rules') }) }} <AppGameRulesSummary :gameOptions="hostedGameClient.getGameOptions()" /></small>
-                        <br>
                         <small>{{ $t('2dots', { s: $t('game.time_control') }) }} <AppTimeControlLabel :gameOptions="hostedGameClient.getGameOptions()" /></small>
                     </p>
                     <p>
@@ -386,13 +375,7 @@ const shouldEnablePass = (): boolean => {
 
                 <!-- playing -->
                 <template v-if="'playing' === hostedGameClient.getState()">
-                    <h3>{{ $t('game.playing') }}</h3>
-                    <p v-if="hostedGameClient.isRanked()" class="text-warning">
-                        <BIconTrophy /> {{ $t('ranked') }}
-                    </p>
                     <p>
-                        <small>{{ $t('2dots', { s: $t('game.rules') }) }} <AppGameRulesSummary :gameOptions="hostedGameClient.getGameOptions()" /></small>
-                        <br>
                         <small>{{ $t('2dots', { s: $t('game.time_control') }) }} <AppTimeControlLabel :gameOptions="hostedGameClient.getGameOptions()" /></small>
                         <br>
                         <small>{{ $t('2dots', { s: $t('game.started') }) }} {{ format(hostedGameClient.getHostedGame().gameData?.startedAt as Date, 'd MMMM yyyy p') }}</small>
@@ -407,16 +390,6 @@ const shouldEnablePass = (): boolean => {
 
                 <!-- ended -->
                 <template v-if="'ended' === hostedGameClient.getState()">
-                    <h3>
-                        <i18next :translation="$t('player_wins_by.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
-                            <template #player>
-                                <AppPseudo :player="hostedGameClient.getStrictWinnerPlayer()" :classes="playerColor(hostedGameClient.getStrictWinnerPlayer())" />
-                            </template>
-                        </i18next>
-                    </h3>
-                    <div v-if="hostedGameClient.isRanked()" class="text-warning">
-                        <BIconTrophy /> {{ $t('ranked') }}
-                    </div>
                     <div v-if="hostedGameClient.isRanked()" class="d-flex justify-content-center gap-4 my-2">
                         <div v-for="rating in hostedGameClient.getRatings().sort(byPlayerPosition)" :key="rating.id">
                             <AppPseudo
@@ -436,8 +409,6 @@ const shouldEnablePass = (): boolean => {
                         </div>
                     </div>
                     <p>
-                        <small>{{ $t('2dots', { s: $t('game.rules') }) }} <AppGameRulesSummary :gameOptions="hostedGameClient.getGameOptions()" /></small>
-                        <br>
                         <small>{{ $t('2dots', { s: $t('game.time_control') }) }} <AppTimeControlLabel :gameOptions="hostedGameClient.getGameOptions()" /></small>
                         <br>
                         <small v-if="hostedGameClient.getHostedGame().gameData?.startedAt && hostedGameClient.getHostedGame().gameData?.endedAt">
@@ -473,7 +444,7 @@ const shouldEnablePass = (): boolean => {
         <!--
             Game buttons
         -->
-        <div class="block-controls">
+        <div class="sidebar-block block-controls">
             <div class="container-fluid">
 
                 <!-- Toggle coords -->
@@ -543,23 +514,13 @@ const shouldEnablePass = (): boolean => {
 
                     <router-link class="btn btn-outline-primary" :to="{ name: 'settings', hash: '#board-orientation' }"><BIconGear /></router-link>
                 </div>
-
-                <!-- Pass -->
-                <button
-                    v-if="shouldShowPass()"
-                    type="button"
-                    class="btn btn-sm me-2 mb-2"
-                    :class="shouldEnablePass() ? 'btn-warning' : 'btn-ouline-secondary disabled'"
-                    :disabled="!shouldEnablePass()"
-                    @click.prevent="pass()"
-                >{{ $t('pass') }}</button>
             </div>
         </div>
 
         <!--
             Game analyze
         -->
-        <div class="block-analyze" v-if="hostedGameClient.getGame().isEnded()">
+        <div class="sidebar-block block-analyze" v-if="hostedGameClient.getGame().isEnded()">
             <div class="container-fluid">
 
                 <!-- Request analyze -->
@@ -603,10 +564,7 @@ const shouldEnablePass = (): boolean => {
         <!--
             Game chat
         -->
-        <div class="block-fill-rest">
-            <div class="container-fluid">
-                <small>{{ $t('chat') }}</small>
-            </div>
+        <div class="sidebar-block block-fill-rest">
             <div class="chat-messages" ref="chatMessagesElement">
                 <div class="container-fluid">
                     <div
@@ -632,6 +590,7 @@ const shouldEnablePass = (): boolean => {
                             <small class="header-date text-secondary mt-1">{{ formatChatDateHeader(message.date) }}</small>
                         </template>
                     </div>
+                    <p v-if="0 === hostedGameClient.getRichChatMessages().length" class="text-secondary">{{ $t('chat') }}</p>
                 </div>
             </div>
 
@@ -649,7 +608,7 @@ const shouldEnablePass = (): boolean => {
         <!--
             Close game sidebar
         -->
-        <div class="block-close bg-dark-subtle">
+        <div class="sidebar-block block-close bg-dark-subtle">
             <button type="button" class="btn btn-link text-body" aria-label="Close" @click="emits('close')">{{ $t('close') }} <BIconArrowBarRight /></button>
         </div>
     </div>
@@ -697,9 +656,13 @@ const shouldEnablePass = (): boolean => {
             flex 0 1 auto
             margin-top auto
 
-.block-game-info
+.sidebar-block
     h3
         margin-top 0.75rem
+
+.block-game-options
+    p
+        margin 0
 
 .block-analyze .analyze-min-height
     min-height 9em
