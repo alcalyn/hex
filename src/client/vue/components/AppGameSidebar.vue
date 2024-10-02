@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /* eslint-env browser */
 import { PropType, nextTick, onMounted, ref, toRefs, watch, watchEffect } from 'vue';
-import { BIconAlphabet, BIconSendFill, BIconArrowBarRight, BIconShareFill, BIconCheck, BIconDownload, BIconCaretUpFill, BIconCaretDownFill, BIconInfoCircle, BIconGear, BIconTrophyFill, BIconPeopleFill } from 'bootstrap-icons-vue';
+import { BIconAlphabet, BIconSendFill, BIconArrowBarRight, BIconShareFill, BIconCheck, BIconDownload, BIconCaretUpFill, BIconCaretDownFill, BIconInfoCircle, BIconGear, BIconTrophyFill, BIconPeopleFill, BIconInfoLg, BIconChatLeft, BIconChatLeftText, BIconBarChartLineFill } from 'bootstrap-icons-vue';
 import { storeToRefs } from 'pinia';
 import copy from 'copy-to-clipboard';
 import useAuthStore from '../../stores/authStore';
@@ -295,6 +295,16 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
     hostedGameClient.value.getPlayerIndex(a.player) -
     hostedGameClient.value.getPlayerIndex(b.player)
 ;
+
+/*
+ * Tabs
+ */
+type Tab = 'info' | 'chat' | 'analyze' | 'settings';
+
+const currentTab = ref<Tab>('info');
+
+const tabActiveClass = (tab: Tab): string => currentTab.value === tab ? 'active' : '';
+const selectedTabIs = (...tabs: Tab[]): boolean => tabs.includes(currentTab.value);
 </script>
 
 <template>
@@ -318,10 +328,19 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
             </div>
         </div>
 
+        <div class="container-fluid">
+            <nav class="nav nav-pills nav-fill mt-2 mb-3">
+                <a class="nav-link" :class="tabActiveClass('info')" @click.prevent="currentTab = 'info'" href="#"><BIconInfoLg /> Info</a>
+                <a class="nav-link" :class="tabActiveClass('chat')" @click.prevent="currentTab = 'chat'" href="#"><BIconChatLeftText /> Chat</a>
+                <a class="nav-link" :class="tabActiveClass('analyze')" @click.prevent="currentTab = 'analyze'" href="#"><BIconBarChartLineFill /> Analyze</a>
+                <a class="nav-link" :class="tabActiveClass('settings')" @click.prevent="currentTab = 'settings'" href="#"><BIconGear /> Settings</a>
+            </nav>
+        </div>
+
         <!--
             Game ranked/friendly, and custom options
         -->
-        <div class="sidebar-block block-game-options">
+        <div class="sidebar-block block-game-options" v-if="selectedTabIs('info')">
             <div class="container-fluid">
                 <p v-if="hostedGameClient.isRanked()" class="text-warning">
                     <BIconTrophyFill /> {{ $t('ranked') }}
@@ -336,7 +355,7 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
         <!--
             Game info
         -->
-        <div class="sidebar-block block-game-info">
+        <div class="sidebar-block block-game-info" v-if="selectedTabIs('info')">
             <div class="container-fluid">
 
                 <!-- created -->
@@ -444,7 +463,7 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
         <!--
             Game buttons
         -->
-        <div class="sidebar-block block-controls">
+        <div class="sidebar-block block-controls" v-if="selectedTabIs('settings')">
             <div class="container-fluid">
 
                 <!-- Toggle coords -->
@@ -520,7 +539,7 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
         <!--
             Game analyze
         -->
-        <div class="sidebar-block block-analyze" v-if="hostedGameClient.getGame().isEnded()">
+        <div class="sidebar-block block-analyze" v-if="selectedTabIs('analyze') && hostedGameClient.getGame().isEnded()">
             <div class="container-fluid">
 
                 <!-- Request analyze -->
@@ -564,7 +583,7 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
         <!--
             Game chat
         -->
-        <div class="sidebar-block block-fill-rest">
+        <div class="sidebar-block block-fill-rest" v-if="selectedTabIs('info', 'chat', 'analyze')">
             <div class="chat-messages" ref="chatMessagesElement">
                 <div class="container-fluid">
                     <div
