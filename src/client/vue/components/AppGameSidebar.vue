@@ -24,6 +24,7 @@ import { pseudoString } from '../../../shared/app/pseudoUtils';
 import { hostedGameToSGF } from '../../../shared/app/hostedGameToSGF';
 import GameView from '../../../shared/pixi-board/GameView';
 import { autoLocale } from '../../../shared/app/i18n';
+import AppGameAnalyzeSummary from './AppGameAnalyzeSummary.vue';
 
 const props = defineProps({
     hostedGameClient: {
@@ -267,6 +268,7 @@ const renderMessage = (str: string): string => {
 const analyzeStore = useAnalyzeStore();
 const gameId = hostedGameClient.value.getId();
 const gameAnalyze = analyzeStore.getAnalyze(gameId);
+const analyzeSummarized = ref(false);
 
 (async () => {
     if (hostedGameClient.value.getGame().isEnded()) {
@@ -415,7 +417,6 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
 
                             <!-- Game played is same day, show short form: "Played date/hour -> hour" -->
                             <template v-if="isSameDay(hostedGameClient.getHostedGame().gameData?.startedAt!, hostedGameClient.getHostedGame().gameData?.endedAt!)">
-                                {{ $t('2dots', { s: $t('game.played') }) }}
                                 {{ format(hostedGameClient.getHostedGame().gameData?.startedAt as Date, 'd MMMM yyyy p') }}
                                 →
                                 {{ format(hostedGameClient.getHostedGame().gameData?.endedAt as Date, 'p') }}
@@ -423,7 +424,6 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
 
                             <!-- Game played on multiple days, show dates, no times, and no need to repeat year -->
                             <template v-else>
-                                {{ $t('2dots', { s: $t('game.played') }) }}
                                 {{ format(hostedGameClient.getHostedGame().gameData?.startedAt as Date, 'd MMMM') }}
                                 →
                                 {{ format(hostedGameClient.getHostedGame().gameData?.endedAt as Date, 'd MMMM yyyy') }}
@@ -542,21 +542,29 @@ const byPlayerPosition = (a: Rating, b: Rating): number =>
                 </p>
 
                 <!-- Done, analyze graph -->
-                <div v-else class="analyze-min-height">
-                    <!-- How it works link -->
-                    <small>
-                        {{ $t('game_analysis.game_analysis') }}
-                        <router-link
-                            :to="{ name: 'analysis-details' }"
-                            class="text-decoration-none align-text-bottom"
-                            :title="$t('game_analysis.how_it_works')"
-                            :aria-label="$t('game_analysis.how_it_works')"
-                        ><BIconInfoCircle /></router-link>
-                    </small>
+                <template v-else>
+                    <div v-if="!analyzeSummarized" class="analyze-min-height">
+                        <!-- How it works link -->
+                        <small>
+                            {{ $t('game_analysis.game_analysis') }}
+                            <router-link
+                                :to="{ name: 'analysis-details' }"
+                                class="text-decoration-none align-text-bottom"
+                                :title="$t('game_analysis.how_it_works')"
+                                :aria-label="$t('game_analysis.how_it_works')"
+                            ><BIconInfoCircle /></router-link>
+                            <button class="btn btn-sm btn-link" @click="analyzeSummarized = true">Collapse</button>
+                        </small>
 
-                    <!-- Anayze graph -->
-                    <AppGameAnalyze :analyze="gameAnalyze.analyze" :gameView />
-                </div>
+                        <!-- Anayze graph -->
+                        <AppGameAnalyze :analyze="gameAnalyze.analyze" :gameView />
+                    </div>
+
+                    <div v-else>
+                        <!-- Anayze graph, collapsed -->
+                        <AppGameAnalyzeSummary :analyze="gameAnalyze.analyze" @click="analyzeSummarized = false" />
+                    </div>
+                </template>
 
             </div>
         </div>
