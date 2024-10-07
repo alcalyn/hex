@@ -8,6 +8,15 @@ const props = defineProps({
         type: Object as PropType<HostedGameOptions>,
         required: true,
     },
+
+    /**
+     * Whether custom rules should be more visible, with a warning icon.
+     */
+    showWarning: {
+        type: Boolean,
+        required: false,
+        default: true,
+    },
 });
 
 const { swapRule, firstPlayer } = props.gameOptions;
@@ -22,7 +31,7 @@ let isDefaultRules = swapRule && null === firstPlayer;
     </span>
 
     <span class="game-rules" v-else>
-        <BIconExclamationTriangleFill class="text-warning" />
+        <BIconExclamationTriangleFill v-if="showWarning" class="text-warning" />
         <span v-if="!swapRule"> {{ ' ' + $t('game_rules.no_swap') }}</span>
         <span v-if="0 === firstPlayer"> {{ ' ' + $t('game_rules.host_plays_first') }}</span>
         <span v-if="1 === firstPlayer"> {{ ' ' + $t('game_rules.host_plays_second') }}</span>
