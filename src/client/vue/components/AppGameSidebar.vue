@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /* eslint-env browser */
 import { PropType, nextTick, onMounted, ref, toRefs, watch, watchEffect } from 'vue';
-import { BIconAlphabet, BIconSendFill, BIconArrowBarRight, BIconShareFill, BIconCheck, BIconDownload, BIconCaretUpFill, BIconCaretDownFill, BIconInfoCircle, BIconGear, BIconTrophyFill, BIconPeopleFill, BIconInfoLg, BIconChatLeftText, BIconHouse, BIconChatLeft, BIconLightningChargeFill, BIconAlarmFill, BIconCalendar } from 'bootstrap-icons-vue';
+import { BIconAlphabet, BIconSendFill, BIconArrowBarRight, BIconShareFill, BIconCheck, BIconDownload, BIconInfoCircle, BIconGear, BIconTrophyFill, BIconPeopleFill, BIconInfoLg, BIconChatLeftText, BIconHouse, BIconChatLeft, BIconLightningChargeFill, BIconAlarmFill, BIconCalendar } from 'bootstrap-icons-vue';
 import { storeToRefs } from 'pinia';
 import copy from 'copy-to-clipboard';
 import useAuthStore from '../../stores/authStore';
 import usePlayerLocalSettingsStore from '../../stores/playerLocalSettingsStore';
 import AppPseudo from './AppPseudo.vue';
 import HostedGameClient from 'HostedGameClient';
-import { ChatMessage, Player, Rating } from '../../../shared/app/models';
+import { ChatMessage, Player } from '../../../shared/app/models';
 import AppGameAnalyze from './AppGameAnalyze.vue';
 import AppGameRulesSummary from './AppGameRulesSummary.vue';
 import AppTimeControlLabel from './AppTimeControlLabel.vue';
@@ -28,6 +28,7 @@ import AppGameAnalyzeSummary from './AppGameAnalyzeSummary.vue';
 import { guessDemerHandicapFromHostedGame } from '@shared/app/demerHandicap';
 import usePlayerSettingsStore from '../../stores/playerSettingsStore';
 import AppRhombus from './AppRhombus.vue';
+import AppRatingChange from './AppRatingChange.vue';
 
 const props = defineProps({
     hostedGameClient: {
@@ -42,7 +43,6 @@ const props = defineProps({
 
 const { gameView } = props;
 const { hostedGameClient } = toRefs(props);
-const { round, abs } = Math;
 
 const emits = defineEmits([
     'close',
@@ -308,18 +308,6 @@ gameView.on('movesHistoryCursorChanged', cursor => {
 });
 
 /*
- * Ratings
- */
-
-/**
- * Sort ratings to place red player first
- */
-const byPlayerPosition = (a: Rating, b: Rating): number =>
-    hostedGameClient.value.getPlayerIndex(a.player) -
-    hostedGameClient.value.getPlayerIndex(b.player)
-;
-
-/*
  * Tabs
  */
 type Tab = 'main' | 'chat' | 'info' | 'settings';
@@ -381,19 +369,28 @@ watch(
                 <h3 v-if="'canceled' === hostedGameClient.getState()">{{ $t('game_has_been_canceled') }}</h3>
                 <h3 v-if="'playing' === hostedGameClient.getState()">{{ $t('game.playing') }}</h3>
                 <h3 v-if="'ended' === hostedGameClient.getState()">
-                    <i18next :translation="$t('player_wins_by.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
+                    <i18next :translation="$t('player_wins_by.default')">
                         <template #player>
                             <AppPseudo :player="hostedGameClient.getStrictWinnerPlayer()" :classes="playerColor(hostedGameClient.getStrictWinnerPlayer())" />
                         </template>
                     </i18next>
+                    <AppRatingChange :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictWinnerPlayer())?.ratingChange ?? 0" class="ms-2" />
                 </h3>
+                <p class="mb-0">
+                    <i18next :translation="$t('player_lost_reason.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
+                        <template #player>
+                            <AppPseudo :player="hostedGameClient.getStrictLoserPlayer()" :classes="playerColor(hostedGameClient.getStrictLoserPlayer())" />
+                        </template>
+                    </i18next>
+                    <AppRatingChange :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictLoserPlayer())?.ratingChange ?? 0" class="ms-2" />
+                </p>
             </div>
         </div>
 
         <!--
             Game date
         -->
-        <div class="sidebar-block block-game-date" v-if="isTab('main')">
+        <div class="sidebar-block block-game-date d-none d-md-block" v-if="isTab('main')">
             <div class="container-fluid">
 
                 <!-- created -->
@@ -508,30 +505,6 @@ watch(
                 </p>
             </div>
         </div>
-
-        <!--
-            Rating changes
-        -->
-        <template v-if="isTab('main')">
-            <div v-if="'ended' === hostedGameClient.getState() && hostedGameClient.isRanked()" class="d-flex justify-content-center gap-4 my-2">
-                <div v-for="rating in hostedGameClient.getRatings().sort(byPlayerPosition)" :key="rating.id">
-                    <AppPseudo
-                        :player="rating.player"
-                        :classes="[playerColor(rating.player), 'me-1']"
-                        is="span"
-                    />
-                    <span v-if="undefined === rating.ratingChange">
-                        -
-                    </span>
-                    <span v-else-if="rating.ratingChange > 0" class="text-success">
-                        <small><BIconCaretUpFill /></small> {{ round(rating.ratingChange) }}
-                    </span>
-                    <span v-else class="text-danger">
-                        <small><BIconCaretDownFill /></small> {{ abs(round(rating.ratingChange)) }}
-                    </span>
-                </div>
-            </div>
-        </template>
 
         <!--
             Game info
@@ -826,6 +799,7 @@ watch(
         min-height 0
 
     .chat-messages
+        font-size 0.9em
         overflow-y auto
         min-height 0
 

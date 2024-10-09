@@ -262,16 +262,16 @@
         "forfeit": "forfeit",
         "time": "timeout"
     },
-    "player_won_by": {
-        "default": "{player} won!",
-        "time": "{player} won on time!",
-        "resign": "{player} won!",
-        "forfeit": "{player} won by forfeit!"
-    },
     "player_wins_by": {
         "default": "{player} wins!",
         "time": "{player} wins on time!",
         "resign": "{player} wins!",
         "forfeit": "{player} wins by forfeit!"
+    },
+    "player_lost_reason": {
+        "default": "{player}",
+        "time": "{player} has timeout",
+        "resign": "{player} resigned",
+        "forfeit": "{player} forfeited"
     }
 }

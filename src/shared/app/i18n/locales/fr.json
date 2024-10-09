@@ -77,12 +77,6 @@
         "minute": "min",
         "second": "s"
     },
-    "player_won_by": {
-        "default": "{player} a gagné !",
-        "time": "{player} a gagné au temps !",
-        "resign": "{player} a gagné !",
-        "forfeit": "{player} a gagné par forfait !"
-    },
     "create_game": {
         "less_options": "Moins d'options",
         "custom_size": "Personnalisée",
