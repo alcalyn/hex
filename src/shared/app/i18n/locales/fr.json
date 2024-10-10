@@ -111,9 +111,15 @@
     },
     "player_wins_by": {
         "time": "{player} gagne au temps !",
-        "resign": "{player} a gagné !",
-        "default": "{player} a gagné !",
+        "resign": "{player} gagne !",
+        "default": "{player} gagne !",
         "forfeit": "{player} gagne par forfait !"
+    },
+    "player_loses_reason": {
+        "default": "{player} perd.",
+        "time": "{player} n'a plus de temps.",
+        "resign": "{player} abandonne.",
+        "forfeit": "{player} déclare forfait."
     },
     "1v1_ranked": {
         "title": "1c1",

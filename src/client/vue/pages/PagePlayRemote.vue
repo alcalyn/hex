@@ -724,7 +724,13 @@ sidebarOpen()
             width 50%
 
         @media (min-width: 992px)
+            width 55%
+
+        @media (min-width: 1200px)
             width 64%
+
+        @media (min-width: 1400px)
+            width 68%
 
     .sidebar
         display flex
@@ -743,7 +749,13 @@ sidebarOpen()
             width 50%
 
         @media (min-width: 992px)
+            width 45%
+
+        @media (min-width: 1200px)
             width 36%
+
+        @media (min-width: 1400px)
+            width 32%
 
     .open-sidebar-btn
         display none

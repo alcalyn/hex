@@ -380,7 +380,7 @@ gameView.on('orientationChanged', () => currentOrientation.value = gameView.getC
                     <AppRatingChange v-if="hostedGameClient.isRanked()" :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictWinnerPlayer())?.ratingChange ?? 0" class="smaller ms-2" />
                 </h3>
                 <p v-if="'ended' === hostedGameClient.getState()" class="mb-0">
-                    <i18next :translation="$t('player_lost_reason.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
+                    <i18next :translation="$t('player_loses_reason.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
                         <template #player>
                             <AppPseudo :player="hostedGameClient.getStrictLoserPlayer()" :classes="playerColor(hostedGameClient.getStrictLoserPlayer())" />
                         </template>
@@ -540,7 +540,7 @@ gameView.on('orientationChanged', () => currentOrientation.value = gameView.getC
                     <dd class="col-md-7">{{ formatGameDuration(hostedGameClient) }}</dd>
 
                     <dt class="col-md-5">Moves count</dt>
-                    <dd class="col-md-7">{{ hostedGameClient.getHostedGame().gameData?.movesHistory.length }}</dd>
+                    <dd class="col-md-7">{{ hostedGameClient.getHostedGame().gameData?.movesHistory.length ?? 0 }}</dd>
 
                     <dt class="col-md-5">Swap used</dt>
                     <dd class="col-md-7">{{ hostedGameClient.getGame().hasSwapped() ? 'yes' : 'no' }}</dd>

@@ -268,10 +268,10 @@
         "resign": "{player} wins!",
         "forfeit": "{player} wins by forfeit!"
     },
-    "player_lost_reason": {
-        "default": "{player}",
-        "time": "{player} has timeout",
-        "resign": "{player} resigned",
-        "forfeit": "{player} forfeited"
+    "player_loses_reason": {
+        "default": "{player} loses.",
+        "time": "{player} timeouts.",
+        "resign": "{player} resigns.",
+        "forfeit": "{player} forfeits."
     }
 }
