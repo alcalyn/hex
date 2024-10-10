@@ -22,7 +22,7 @@ import useServerDateStore from '../../stores/serverDateStore';
 import { downloadString } from '../../services/fileDownload';
 import { pseudoString } from '../../../shared/app/pseudoUtils';
 import { hostedGameToSGF } from '../../../shared/app/hostedGameToSGF';
-import GameView from '../../../shared/pixi-board/GameView';
+import GameView, { OrientationMode } from '../../../shared/pixi-board/GameView';
 import { autoLocale } from '../../../shared/app/i18n';
 import AppGameAnalyzeSummary from './AppGameAnalyzeSummary.vue';
 import { guessDemerHandicapFromHostedGame } from '@shared/app/demerHandicap';
@@ -345,6 +345,9 @@ watch(
     },
     { deep: true },
 );
+
+const currentOrientation = ref<OrientationMode>(gameView.getComputedBoardOrientationMode());
+gameView.on('orientationChanged', () => currentOrientation.value = gameView.getComputedBoardOrientationMode());
 </script>
 
 <template>
@@ -374,15 +377,15 @@ watch(
                             <AppPseudo :player="hostedGameClient.getStrictWinnerPlayer()" :classes="playerColor(hostedGameClient.getStrictWinnerPlayer())" />
                         </template>
                     </i18next>
-                    <AppRatingChange :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictWinnerPlayer())?.ratingChange ?? 0" class="ms-2" />
+                    <AppRatingChange v-if="hostedGameClient.isRanked()" :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictWinnerPlayer())?.ratingChange ?? 0" class="smaller ms-2" />
                 </h3>
-                <p class="mb-0">
+                <p v-if="'ended' === hostedGameClient.getState()" class="mb-0">
                     <i18next :translation="$t('player_lost_reason.' + (hostedGameClient.getHostedGame().gameData?.outcome ?? 'default'))">
                         <template #player>
                             <AppPseudo :player="hostedGameClient.getStrictLoserPlayer()" :classes="playerColor(hostedGameClient.getStrictLoserPlayer())" />
                         </template>
                     </i18next>
-                    <AppRatingChange :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictLoserPlayer())?.ratingChange ?? 0" class="ms-2" />
+                    <AppRatingChange v-if="hostedGameClient.isRanked()" :ratingChange="hostedGameClient.getRating(hostedGameClient.getStrictLoserPlayer())?.ratingChange ?? 0" class="ms-2" />
                 </p>
             </div>
         </div>
@@ -501,7 +504,7 @@ watch(
                 </p>
                 <p v-else>
                     <span class="text-success"><BIconPeopleFill /> {{ $t('friendly') }}</span>
-                    <small class="ms-2"><AppGameRulesSummary :showWarning="false" :gameOptions="hostedGameClient.getGameOptions()" /></small>
+                    <small class="ms-2"><AppGameRulesSummary :showIcon="false" :gameOptions="hostedGameClient.getGameOptions()" /></small>
                 </p>
             </div>
         </div>
@@ -627,12 +630,12 @@ watch(
                     @click.prevent="emits('toggleCoords')"
                     :aria-label="$t('toggle_coords')"
                     :title="$t('toggle_coords')"
-                ><BIconAlphabet /> {{ $t('toggle_coords') }}</button>
+                ><BIconAlphabet /> {{ $t('toggle_coords_short') }}</button>
 
                 <div class="row mt-2" v-if="playerSettings">
-                    <div class="col-12" v-if="'landscape' === gameView.getComputedBoardOrientationMode()">
+                    <div class="col-12" v-if="'landscape' === currentOrientation">
                         <div class="btn-group" role="group">
-                            <template v-for="orientation in [0, 11]" :key="orientation">
+                            <template v-for="orientation in [0, 10, 11]" :key="orientation">
                                 <input type="radio" class="btn-check" v-model="playerSettings.orientationLandscape" :value="orientation" :id="'landscape-radio-' + orientation" autocomplete="off">
                                 <label class="btn" :for="'landscape-radio-' + orientation">
                                     <AppRhombus :orientation="orientation" />
@@ -640,9 +643,9 @@ watch(
                             </template>
                         </div>
                     </div>
-                    <div class="col-12" v-if="'portrait' === gameView.getComputedBoardOrientationMode()">
+                    <div class="col-12" v-if="'portrait' === currentOrientation">
                         <div class="btn-group" role="group">
-                            <template v-for="orientation in [9, 2]" :key="orientation">
+                            <template v-for="orientation in [1, 9, 2]" :key="orientation">
                                 <input type="radio" class="btn-check" v-model="playerSettings.orientationPortrait" :value="orientation" :id="'landscape-radio-' + orientation" autocomplete="off">
                                 <label class="btn" :for="'landscape-radio-' + orientation">
                                     <AppRhombus :orientation="orientation" />
@@ -666,7 +669,7 @@ watch(
                 </div>
 
                 <p class="mt-4">
-                    <router-link :to="{ name: 'settings' }"><BIconGear /> {{ $t('player_settings.title') }}</router-link>
+                    <router-link class="btn btn-outline-primary" :to="{ name: 'settings' }"><BIconGear /> {{ $t('player_settings.title') }}</router-link>
                 </p>
             </div>
         </div>
@@ -747,7 +750,7 @@ watch(
                             </template>
 
                             <template v-else-if="message.type === 'move'">
-                                <button class="btn btn-link btn-sm header-move text-secondary" @click="gameView?.setMovesHistoryCursor(message.moveNumber - 1)">{{ $t('move_number', { n: message.moveNumber }) }}</button>
+                                <button class="btn btn-link btn-sm header-move text-secondary p-0" @click="gameView?.setMovesHistoryCursor(message.moveNumber - 1)">{{ $t('move_number', { n: message.moveNumber }) }}</button>
                             </template>
                             <template v-else-if="message.type === 'date'">
                                 <small class="header-date text-secondary mt-1">{{ formatChatDateHeader(message.date) }}</small>
@@ -839,6 +842,9 @@ watch(
 .block-game-title
     h3
         margin-bottom 0
+
+    .smaller
+        font-size 0.75em
 
 .block-game-options
     p
